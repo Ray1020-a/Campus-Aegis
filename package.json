@@ -1,0 +1,32 @@
+{
+  "name": "advanced-defense",
+  "version": "1.0.0",
+  "description": "Campus Aegis 校園神盾：VyOS 流量監測與 AI 即時防禦",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "admin": "node src/admin-server.js",
+    "deception": "node src/deception-server.js",
+    "start:full": "node src/index.js",
+    "all": "node src/index.js"
+  },
+  "keywords": ["vyos", "netflow", "ddos", "gemini", "blackhole"],
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "express": "^4.21.0",
+    "express-session": "^1.18.0",
+    "cookie-parser": "^1.4.6",
+    "geoip-lite": "^1.4.9",
+    "@bettercorp/node-netflowv9": "^0.3.5",
+    "better-sqlite3": "^11.0.0"
+  },
+  "optionalDependencies": {
+    "pcap": "^3.0.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

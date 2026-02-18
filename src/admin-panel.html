@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Campus Aegis 校園神盾</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c1222;
+      --surface: #151d33;
+      --surface2: #1a2442;
+      --border: #2a3655;
+      --text: #e8ecf4;
+      --text2: #94a3c2;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --radius: 10px;
+      --shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans TC', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ========== 登入頁 ========== */
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: radial-gradient(ellipse at top, #1a2744 0%, var(--bg) 60%);
+    }
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      box-shadow: var(--shadow);
+    }
+    .login-card h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+    .login-card .tagline {
+      color: var(--text2);
+      font-size: 0.9rem;
+      margin-bottom: 1.75rem;
+    }
+    .login-card label {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--text2);
+      margin-bottom: 0.5rem;
+    }
+    .login-card input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 1rem;
+    }
+    .login-card input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .login-card .btn {
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 0.75rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .login-card .btn:hover { background: var(--accent-hover); }
+    .login-card .err {
+      margin-top: 0.75rem;
+      color: var(--danger);
+      font-size: 0.875rem;
+    }
+    .login-card .copy {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text2);
+    }
+
+    /* ========== 儀表板版面 ========== */
+    .dashboard { display: none; min-height: 100vh; }
+    .dashboard.active { display: flex; }
+
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar .logo {
+      padding: 1.25rem 1.5rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar .nav {
+      flex: 1;
+      padding: 0.75rem 0;
+    }
+    .sidebar .nav-btn {
+      display: block;
+      width: 100%;
+      padding: 0.65rem 1.5rem;
+      border: none;
+      background: none;
+      color: var(--text2);
+      font-size: 0.9rem;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .sidebar .nav-btn:hover {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--text);
+    }
+    .sidebar .nav-btn.active {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .sidebar .copy {
+      padding: 1rem 1.5rem;
+      font-size: 0.75rem;
+      color: var(--text2);
+      border-top: 1px solid var(--border);
+    }
+
+    .main {
+      flex: 1;
+      min-width: 0;
+      padding: 1.75rem 2rem;
+      overflow: auto;
+    }
+    .main h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* 統計卡片 */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .stat-card .label {
+      font-size: 0.8rem;
+      color: var(--text2);
+      margin-bottom: 0.35rem;
+    }
+    .stat-card .value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* 圖表區 */
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      height: 280px;
+    }
+    .chart-card h3 {
+      font-size: 0.9rem;
+      color: var(--text2);
+      margin-bottom: 0.75rem;
+      font-weight: 500;
+    }
+    .chart-card canvas { max-height: 220px; }
+    .system-status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    .system-item { display: flex; flex-direction: column; gap: 0.25rem; }
+    .system-item .label { font-size: 0.75rem; color: var(--text2); }
+    .system-item span:last-child { font-size: 0.95rem; color: var(--text); }
+    .system-item .status-ok { color: var(--success); }
+    .system-item .status-warn { color: #f59e0b; }
+
+    /* 表格 */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th {
+      background: var(--surface2);
+      color: var(--text2);
+      font-weight: 500;
+      font-size: 0.8rem;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .ip-cell { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .flag { font-size: 1.25rem; }
+    .btn-sm {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { filter: brightness(1.1); }
+    .revoked { color: var(--text2); }
+    .muted { color: var(--text2); font-size: 0.875rem; margin-bottom: 0.5rem; }
+
+    /* 僅刪除日誌區 */
+    .warning-zone {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      max-width: 560px;
+      margin-bottom: 1.5rem;
+    }
+    .warning-zone h3 { color: #fcd34d; font-size: 1rem; margin-bottom: 0.5rem; }
+    .warning-zone p { color: var(--text2); font-size: 0.9rem; margin-bottom: 1rem; }
+    .btn-warning {
+      padding: 0.6rem 1.25rem;
+      background: #d97706;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-warning:hover { filter: brightness(1.1); }
+    .btn-warning:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* 危險區 */
+    .danger-zone {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      max-width: 560px;
+    }
+    .danger-zone h3 { color: #fca5a5; font-size: 1rem; margin-bottom: 0.5rem; }
+    .danger-zone p { color: var(--text2); font-size: 0.9rem; margin-bottom: 1rem; }
+    .btn-clear {
+      padding: 0.6rem 1.25rem;
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-clear:hover { filter: brightness(1.1); }
+    .btn-clear:disabled { opacity: 0.6; cursor: not-allowed; }
+    .result { margin-left: 0.75rem; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <!-- 登入頁 -->
+  <div id="login-wrap" class="login-wrap">
+    <div class="login-card">
+      <h1>Campus Aegis 校園神盾</h1>
+      <p class="tagline">校園神盾管理平台</p>
+      <form id="login-form">
+        <label for="pw">密碼</label>
+        <input type="password" id="pw" name="password" placeholder="請輸入管理員密碼" autocomplete="current-password">
+        <div id="login-err" class="err"></div>
+        <button type="submit" class="btn">登入</button>
+      </form>
+      <p class="copy">© HA237013 三好學生大聯盟</p>
+    </div>
+  </div>
+
+  <!-- 儀表板（登入後顯示） -->
+  <div id="dashboard" class="dashboard">
+    <aside class="sidebar">
+      <div class="logo">Campus Aegis<br>校園神盾</div>
+      <div class="nav">
+        <button type="button" class="nav-btn active" data-panel="dashboard">儀表板</button>
+        <button type="button" class="nav-btn" data-panel="blackholes">黑洞管理</button>
+        <button type="button" class="nav-btn" data-panel="logs">防禦日誌</button>
+        <button type="button" class="nav-btn" data-panel="deception">誘騙日誌</button>
+        <button type="button" class="nav-btn" data-panel="netflow">即時流量</button>
+        <button type="button" class="nav-btn" data-panel="data">資料管理</button>
+        <button type="button" class="nav-btn" id="btn-logout">登出</button>
+      </div>
+      <div class="copy">© HA237013 三好學生大聯盟</div>
+    </aside>
+    <main class="main" id="main-content">
+      <div id="panel-dashboard" class="panel active">
+        <h1>儀表板</h1>
+        <div class="stats">
+          <div class="stat-card"><div class="label">有效黑洞</div><div class="value" id="stat-active">0</div></div>
+          <div class="stat-card"><div class="label">今日誘騙</div><div class="value" id="stat-today">0</div></div>
+          <div class="stat-card"><div class="label">近 7 日誘騙</div><div class="value" id="stat-7d">0</div></div>
+          <div class="stat-card"><div class="label">總黑洞記錄</div><div class="value" id="stat-total">0</div></div>
+        </div>
+        <div class="chart-card system-status" style="margin-bottom:1.5rem;">
+          <h3>系統狀態</h3>
+          <div id="system-status" class="system-status-grid">
+            <div class="system-item"><span class="label">版本</span><span id="sys-version">-</span></div>
+            <div class="system-item"><span class="label">運行時間</span><span id="sys-uptime">-</span></div>
+            <div class="system-item"><span class="label">上次防禦</span><span id="sys-last-defense">-</span></div>
+            <div class="system-item"><span class="label">NetFlow</span><span id="sys-netflow">-</span></div>
+          </div>
+        </div>
+        <div class="charts">
+          <div class="chart-card"><h3>黑洞新增趨勢</h3><canvas id="chart-bh"></canvas></div>
+          <div class="chart-card"><h3>誘騙命中趨勢</h3><canvas id="chart-dec"></canvas></div>
+        </div>
+        <div class="chart-card" style="height:auto;min-height:200px;">
+          <h3>攻擊來源 IP 排行</h3>
+          <div id="top-ips"></div>
+        </div>
+      </div>
+      <div id="panel-blackholes" class="panel">
+        <h1>黑洞管理</h1>
+        <p class="muted">目前有效黑洞，可在此撤銷。</p>
+        <div id="blackhole-list" class="table-card"><div class="table-wrap"><table><tbody></tbody></table></div></div>
+      </div>
+      <div id="panel-logs" class="panel">
+        <h1>防禦日誌</h1>
+        <div id="logs-list" class="table-card"><div class="table-wrap"><table><tbody></tbody></table></div></div>
+      </div>
+      <div id="panel-deception" class="panel">
+        <h1>誘騙日誌</h1>
+        <p class="muted">打到假系統的可疑請求。</p>
+        <div id="deception-list" class="table-card"><div class="table-wrap"><table><tbody></tbody></table></div></div>
+      </div>
+      <div id="panel-netflow" class="panel">
+        <h1>即時流量</h1>
+        <p class="muted">即時接收紀錄（最近 500 筆，每 2 秒更新）。</p>
+        <p id="netflow-hint" class="muted" style="display:none;"></p>
+        <div id="netflow-list" class="table-card"><div class="table-wrap"><table><tbody></tbody></table></div></div>
+      </div>
+      <div id="panel-data" class="panel">
+        <h1>資料管理</h1>
+        <div class="warning-zone">
+          <h3>僅刪除日誌</h3>
+          <p>刪除所有黑洞日誌與誘騙日誌，並保留路由器上所有有效黑洞。本機記錄清空後儀表板數據會歸零，但路由黑洞仍生效。</p>
+          <button type="button" class="btn-warning" id="btn-clear-logs-only">刪除所有日誌（保留路由黑洞）</button>
+          <span id="clear-logs-result" class="result"></span>
+        </div>
+        <div class="danger-zone">
+          <h3>危險操作</h3>
+          <p>刪除所有黑洞日誌與誘騙日誌，並從路由器撤銷所有有效黑洞。此操作無法復原。</p>
+          <button type="button" class="btn-clear" id="btn-clear-all">刪除所有數據</button>
+          <span id="clear-result" class="result"></span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function() {
+      var opts = { credentials: 'same-origin' };
+      function api(url) {
+        return fetch(url, opts).then(function(r) {
+          if (r.status === 401) { location.href = '/login'; throw new Error('unauth'); }
+          return r.json();
+        });
+      }
+      function apiPost(url, body) {
+        return fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body || {}),
+          credentials: 'same-origin'
+        }).then(function(r) {
+          if (r.status === 401) { location.href = '/login'; throw new Error('unauth'); }
+          return r.json();
+        });
+      }
+      function esc(s) {
+        if (s == null) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+      function ipCell(ip, flag, country) {
+        if (!ip) return '-';
+        return '<span class="ip-cell"><span class="flag">' + esc(flag) + '</span><span>' + esc(ip) + '</span> <span class="muted">(' + esc(country) + ')</span></span>';
+      }
+
+      var chartBh, chartDec;
+      function formatUptime(sec) {
+        if (sec == null || sec < 0) return '-';
+        var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+        if (h > 24) return Math.floor(h / 24) + ' 天';
+        if (h > 0) return h + ' 小時 ' + m + ' 分';
+        if (m > 0) return m + ' 分';
+        return sec + ' 秒';
+      }
+      function formatLastDefense(iso, result) {
+        if (!iso) return '尚無執行記錄';
+        var t = new Date(iso).getTime(), now = Date.now(), diff = Math.floor((now - t) / 1000);
+        var ago = diff < 60 ? diff + ' 秒前' : diff < 3600 ? Math.floor(diff / 60) + ' 分鐘前' : Math.floor(diff / 3600) + ' 小時前';
+        if (result && (result.flowCount != null || result.blockedCount != null)) {
+          var parts = [];
+          if (result.flowCount != null) parts.push('流量 ' + result.flowCount + ' 筆');
+          if (result.blockedCount != null) parts.push('黑洞 ' + result.blockedCount + ' 筆');
+          return ago + '（' + parts.join('，') + '）';
+        }
+        return ago;
+      }
+      function refreshDashboard() {
+        api('/api/stats').then(function(j) {
+          if (!j || !j.success || !j.data) return;
+          var d = j.data;
+          setText('stat-active', d.activeBlackholes);
+          setText('stat-today', d.deceptionToday);
+          setText('stat-7d', d.deception7d);
+          setText('stat-total', d.totalBlackholeLogs);
+          var sys = d.system || {};
+          setText('sys-version', sys.version || '-');
+          setText('sys-uptime', formatUptime(sys.uptimeSeconds));
+          var lastEl = document.getElementById('sys-last-defense');
+          if (lastEl) lastEl.textContent = formatLastDefense(sys.lastDefenseAt, sys.lastDefenseResult);
+          var nfEl = document.getElementById('sys-netflow');
+          if (nfEl) {
+            nfEl.textContent = sys.netflowReceived ? '已連線' : '等待連線';
+            nfEl.className = sys.netflowReceived ? 'status-ok' : 'status-warn';
+          }
+          var top = (d.topDeceptionIps || []).map(function(x) {
+            return '<div class="ip-cell" style="margin-bottom:0.4rem;"><span class="flag">' + esc(x.flag) + '</span><span>' + esc(x.ip) + '</span> <span class="muted">' + esc(x.country) + '</span> <span class="muted" style="margin-left:auto;">' + x.count + ' 次</span></div>';
+          }).join('') || '<span class="muted">尚無資料</span>';
+          var el = document.getElementById('top-ips');
+          if (el) el.innerHTML = top;
+          var bhDays = d.blackholeByDay || [];
+          var decDays = d.deceptionByDay || [];
+          var dates = [];
+          bhDays.forEach(function(x) { dates.push(x.date); });
+          decDays.forEach(function(x) { dates.push(x.date); });
+          var labels = dates.filter(function(v,i,a) { return a.indexOf(v)===i; }).sort().slice(-14);
+          var c1 = document.getElementById('chart-bh');
+          var c2 = document.getElementById('chart-dec');
+          if (typeof Chart !== 'undefined' && c1 && c2) {
+            if (chartBh) chartBh.destroy();
+            if (chartDec) chartDec.destroy();
+            chartBh = new Chart(c1, {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [{ label: '黑洞', data: labels.map(function(d) { var o = bhDays.find(function(x) { return x.date === d; }); return (o && o.count) || 0; }), backgroundColor: 'rgba(59,130,246,0.7)' }]
+              },
+              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+            chartDec = new Chart(c2, {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [{ label: '誘騙', data: labels.map(function(d) { var o = decDays.find(function(x) { return x.date === d; }); return (o && o.count) || 0; }), borderColor: '#22c55e', fill: true, backgroundColor: 'rgba(34,197,94,0.15)' }]
+              },
+              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+          }
+        }).catch(function() {});
+      }
+      function setText(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; }
+
+      function loadBlackholes() {
+        api('/api/blackholes').then(function(j) {
+          var data = (j && j.data) ? j.data : [];
+          var html = '<thead><tr><th>CIDR</th><th>原因</th><th>建立時間</th><th></th></tr></thead><tbody>' +
+            data.map(function(b) {
+              return '<tr><td>' + esc(b.cidr) + '</td><td>' + esc(b.reason) + '</td><td>' + esc(b.created_at) + '</td><td><button type="button" class="btn-sm btn-danger btn-revoke" data-cidr="' + esc(b.cidr) + '">撤銷</button></td></tr>';
+            }).join('') + '</tbody>';
+          var wrap = document.querySelector('#blackhole-list .table-wrap');
+          if (wrap) wrap.innerHTML = '<table>' + html + '</table>';
+        }).catch(function() {});
+      }
+      function loadLogs() {
+        api('/api/logs?limit=100').then(function(j) {
+          var data = (j && j.data) ? j.data : [];
+          var html = '<thead><tr><th>IP / 國家</th><th>CIDR</th><th>原因</th><th>建立</th><th>撤銷時間</th><th>撤銷者</th></tr></thead><tbody>' +
+            data.map(function(l) {
+              var ip = (l.cidr || '').split('/')[0];
+              return '<tr class="' + (l.revoked_at ? 'revoked' : '') + '"><td>' + ipCell(ip, l.flag, l.country) + '</td><td>' + esc(l.cidr) + '</td><td>' + esc(l.reason) + '</td><td>' + esc(l.created_at) + '</td><td>' + esc(l.revoked_at || '-') + '</td><td>' + esc(l.revoked_by || '-') + '</td></tr>';
+            }).join('') + '</tbody>';
+          var wrap = document.querySelector('#logs-list .table-wrap');
+          if (wrap) wrap.innerHTML = '<table>' + html + '</table>';
+        }).catch(function() {});
+      }
+      function loadDeception() {
+        api('/api/deception-logs?limit=100').then(function(j) {
+          var data = (j && j.data) ? j.data : [];
+          var html = '<thead><tr><th>來源 IP / 國家</th><th>Method</th><th>Path</th><th>時間</th></tr></thead><tbody>' +
+            data.map(function(l) {
+              return '<tr><td>' + ipCell(l.ip, l.flag, l.country) + '</td><td>' + esc(l.method) + '</td><td>' + esc(l.path) + '</td><td>' + esc(l.created_at) + '</td></tr>';
+            }).join('') + '</tbody>';
+          var wrap = document.querySelector('#deception-list .table-wrap');
+          if (wrap) wrap.innerHTML = '<table>' + html + '</table>';
+        }).catch(function() {});
+      }
+
+      var netflowIntervalId = null;
+      function loadNetflow() {
+        api('/api/netflow/recent?limit=200').then(function(j) {
+          var hintEl = document.getElementById('netflow-hint');
+          if (j.hint) {
+            if (hintEl) { hintEl.textContent = j.hint; hintEl.style.display = 'block'; }
+          } else {
+            if (hintEl) hintEl.style.display = 'none';
+          }
+          var data = (j && j.data) ? j.data : [];
+          function fmtTime(ts) {
+            if (!ts) return '-';
+            var d = new Date(ts);
+            return d.toLocaleTimeString('zh-TW', { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+          }
+          var html = '<thead><tr><th>來源</th><th>目的</th><th>協定</th><th>來源埠</th><th>目的埠</th><th>封包</th><th>位元組</th><th>時間</th></tr></thead><tbody>' +
+            (data.length ? data.map(function(r) {
+              return '<tr><td>' + esc(r.src) + '</td><td>' + esc(r.dst) + '</td><td>' + esc(r.protocol) + '</td><td>' + esc(r.sport) + '</td><td>' + esc(r.dport) + '</td><td>' + esc(r.packets) + '</td><td>' + esc(r.bytes) + '</td><td>' + fmtTime(r.at) + '</td></tr>';
+            }).join('') : '<tr><td colspan="8" class="muted">尚無流量資料</td></tr>') + '</tbody>';
+          var wrap = document.querySelector('#netflow-list .table-wrap');
+          if (wrap) wrap.innerHTML = '<table>' + html + '</table>';
+        }).catch(function() {});
+      }
+
+      function showPanel(name) {
+        if (netflowIntervalId) { clearInterval(netflowIntervalId); netflowIntervalId = null; }
+        document.querySelectorAll('.nav-btn').forEach(function(btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-panel') === name);
+        });
+        document.querySelectorAll('.main .panel').forEach(function(p) {
+          p.classList.toggle('active', p.id === 'panel-' + name);
+        });
+        if (name === 'dashboard') refreshDashboard();
+        else if (name === 'blackholes') loadBlackholes();
+        else if (name === 'logs') loadLogs();
+        else if (name === 'deception') loadDeception();
+        else if (name === 'netflow') { loadNetflow(); netflowIntervalId = setInterval(loadNetflow, 2000); }
+      }
+
+      document.getElementById('login-form').onsubmit = function(e) {
+        e.preventDefault();
+        var err = document.getElementById('login-err');
+        err.textContent = '';
+        fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: document.getElementById('pw').value }),
+          credentials: 'same-origin'
+        }).then(function(r) { return r.json(); }).then(function(j) {
+          if (j && j.success) location.href = '/';
+          else err.textContent = (j && j.error) || '登入失敗';
+        }).catch(function() { err.textContent = '連線失敗'; });
+      };
+
+      document.querySelectorAll('.nav-btn').forEach(function(btn) {
+        var panel = btn.getAttribute('data-panel');
+        if (panel) {
+          btn.onclick = function() { showPanel(panel); };
+        }
+      });
+      document.getElementById('btn-logout').onclick = function() {
+        apiPost('/api/logout').then(function() { location.href = '/login'; });
+      };
+      document.getElementById('main-content').addEventListener('click', function(e) {
+        var t = e.target;
+        if (t.classList && t.classList.contains('btn-revoke') && t.dataset.cidr) {
+          e.preventDefault();
+          if (!confirm('確定撤銷 ' + t.dataset.cidr + '？')) return;
+          t.disabled = true;
+          apiPost('/api/blackholes/revoke', { cidr: t.dataset.cidr }).then(function(j) {
+            alert((j && j.success) ? '已撤銷' : ((j && j.error) || '失敗'));
+            loadBlackholes();
+          }).finally(function() { t.disabled = false; });
+        }
+      });
+
+      document.getElementById('btn-clear-logs-only').onclick = function() {
+        if (!confirm('確定僅刪除本機所有日誌？')) return;
+        var btn = this;
+        var result = document.getElementById('clear-logs-result');
+        btn.disabled = true;
+        result.textContent = '處理中…';
+        result.style.color = '';
+        apiPost('/api/data/clear-logs-only').then(function(j) {
+          result.textContent = (j && j.success) ? '已完成' : ((j && j.error) || '失敗');
+          result.style.color = (j && j.success) ? '#94a3c2' : '#ef4444';
+          if (j && j.success) { refreshDashboard(); loadBlackholes(); loadLogs(); loadDeception(); }
+        }).catch(function() { result.textContent = '錯誤'; result.style.color = '#ef4444'; }).finally(function() { btn.disabled = false; });
+      };
+
+      document.getElementById('btn-clear-all').onclick = function() {
+        if (!confirm('確定要刪除所有數據？此操作無法復原。')) return;
+        var btn = this;
+        var result = document.getElementById('clear-result');
+        btn.disabled = true;
+        result.textContent = '處理中…';
+        apiPost('/api/data/clear').then(function(j) {
+          result.textContent = (j && j.success) ? '已完成' : ((j && j.error) || '失敗');
+          result.style.color = (j && j.success) ? '#94a3c2' : '#ef4444';
+          if (j && j.success) { showPanel('dashboard'); loadBlackholes(); loadLogs(); loadDeception(); }
+        }).catch(function() { result.textContent = '錯誤'; result.style.color = '#ef4444'; }).finally(function() { btn.disabled = false; });
+      };
+
+      if (location.pathname !== '/login') {
+        document.getElementById('login-wrap').style.display = 'none';
+        document.getElementById('dashboard').classList.add('active');
+        refreshDashboard();
+        setInterval(refreshDashboard, 60000);
+      } else {
+        document.getElementById('dashboard').style.display = 'none';
+      }
+    })();
+  </script>
+</body>
+</html>
