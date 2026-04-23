@@ -59,19 +59,15 @@ export async function mockGeminiAnalyzer(flowSummary) {
 
 // ── Demo NetFlow Generator ──────────────────────────────────────────────────
 
-// 校園內網主機（學生/教職員電腦、IoT 設備等）
+// 校園內網主機（10.87.87.0/24 網段）
 const INTERNAL_SRCS = [
-  // 學生宿舍區 192.168.x
-  '192.168.1.23',  '192.168.1.47',  '192.168.1.88',  '192.168.1.102',
-  '192.168.2.15',  '192.168.2.63',  '192.168.2.134', '192.168.2.201',
-  '192.168.3.9',   '192.168.3.77',
-  // 教室/辦公室 10.x
-  '10.0.1.12',     '10.0.1.34',     '10.0.1.89',     '10.0.2.5',
-  '10.0.2.67',     '10.0.3.100',    '10.0.3.142',    '10.0.4.20',
-  // 校園骨幹 172.16.x
-  '172.16.0.55',   '172.16.0.88',   '172.16.1.10',   '172.16.1.200',
-  // 校園公網 IP 段
-  '140.112.30.5',  '140.112.30.18', '140.112.31.4',  '140.112.31.77',
+  '10.87.87.11',  '10.87.87.12',  '10.87.87.13',  '10.87.87.14',
+  '10.87.87.15',  '10.87.87.20',  '10.87.87.21',  '10.87.87.22',
+  '10.87.87.30',  '10.87.87.31',  '10.87.87.40',  '10.87.87.41',
+  '10.87.87.50',  '10.87.87.51',  '10.87.87.60',  '10.87.87.61',
+  '10.87.87.70',  '10.87.87.80',  '10.87.87.90',  '10.87.87.100',
+  '10.87.87.110', '10.87.87.120', '10.87.87.130', '10.87.87.140',
+  '10.87.87.150', '10.87.87.160', '10.87.87.200', '10.87.87.210',
 ];
 
 // 常見外網目的（按真實流量加權：Google/CDN/社群/串流最多）
@@ -107,14 +103,14 @@ const EXTERNAL_DSTS_WEIGHTED = [
   { ip: '54.230.168.50',  dport: 80,  proto: 'tcp' },
 ];
 
-// 校內伺服器（對外提供服務，會有外網打進來）
+// 校內伺服器（10.87.87.0/24 段內的服務器）
 const INTERNAL_SERVERS = [
-  { ip: '140.112.8.100', dport: 80,   proto: 'tcp' },   // 校網 web
-  { ip: '140.112.8.101', dport: 443,  proto: 'tcp' },   // 校網 web HTTPS
-  { ip: '140.112.8.200', dport: 25,   proto: 'tcp' },   // mail server
-  { ip: '10.87.87.2',    dport: 80,   proto: 'tcp' },   // 內部 web
-  { ip: '10.87.87.3',    dport: 3306, proto: 'tcp' },   // DB（內部）
-  { ip: '10.87.87.4',    dport: 22,   proto: 'tcp' },   // SSH（內部）
+  { ip: '10.87.87.1',  dport: 80,   proto: 'tcp' },   // 閘道/web proxy
+  { ip: '10.87.87.2',  dport: 443,  proto: 'tcp' },   // 內部 HTTPS
+  { ip: '10.87.87.3',  dport: 3306, proto: 'tcp' },   // DB
+  { ip: '10.87.87.4',  dport: 22,   proto: 'tcp' },   // SSH
+  { ip: '10.87.87.5',  dport: 53,   proto: 'udp' },   // 內部 DNS
+  { ip: '10.87.87.10', dport: 80,   proto: 'tcp' },   // 應用伺服器
 ];
 
 // 外網攻擊來源
@@ -140,53 +136,42 @@ function realisticBytes(dport, packets) {
 
 function generateFlowBatch(isAttackWindow) {
   const flows = [];
-  const batchSize = randInt(8, 18);
 
-  for (let i = 0; i < batchSize; i++) {
-    const roll = Math.random();
+  // 每批總量浮動在 20 上下（18~22）
+  const batchSize = randInt(18, 22);
+  // 其中外網入站固定 1~2 筆，其餘全為內網 → 外網
+  const inboundCount = randInt(1, 2);
+  const outboundCount = batchSize - inboundCount;
 
-    if (roll < 0.78) {
-      // ── 78%：內網 → 外網（outbound）─ 最主要流量 ──────────────────
-      const dst = pick(EXTERNAL_DSTS_WEIGHTED);
-      const pkts = dst.dport === 53 ? randInt(1, 3) : randInt(3, 120);
-      flows.push({
-        src:      pick(INTERNAL_SRCS),
-        dst:      dst.ip,
-        sport:    randInt(1024, 65535),
-        dport:    dst.dport,
-        protocol: dst.proto,
-        packets:  pkts,
-        bytes:    realisticBytes(dst.dport, pkts),
-      });
+  // 內網 → 外網（主體流量）
+  for (let i = 0; i < outboundCount; i++) {
+    const dst = pick(EXTERNAL_DSTS_WEIGHTED);
+    const pkts = dst.dport === 53 ? randInt(1, 3) : randInt(3, 120);
+    flows.push({
+      src:      pick(INTERNAL_SRCS),
+      dst:      dst.ip,
+      sport:    randInt(1024, 65535),
+      dport:    dst.dport,
+      protocol: dst.proto,
+      packets:  pkts,
+      bytes:    realisticBytes(dst.dport, pkts),
+    });
+  }
 
-    } else if (roll < 0.90) {
-      // ── 12%：內網 → 內網（內部橫向，印表機/NAS/DB 存取）─────────
-      const srv = pick(INTERNAL_SERVERS);
-      const pkts = randInt(2, 40);
-      flows.push({
-        src:      pick(INTERNAL_SRCS),
-        dst:      srv.ip,
-        sport:    randInt(1024, 65535),
-        dport:    srv.dport,
-        protocol: srv.proto,
-        packets:  pkts,
-        bytes:    realisticBytes(srv.dport, pkts),
-      });
-
-    } else {
-      // ── 10%：外網 → 校內公開服務（正常入站，外部瀏覽校網）────────
-      const srv = pick(INTERNAL_SERVERS.filter((s) => s.dport === 80 || s.dport === 443 || s.dport === 25));
-      const pkts = randInt(3, 50);
-      flows.push({
-        src:      pick(EXTERNAL_DSTS_WEIGHTED).ip,
-        dst:      srv.ip,
-        sport:    randInt(1024, 65535),
-        dport:    srv.dport,
-        protocol: srv.proto,
-        packets:  pkts,
-        bytes:    realisticBytes(srv.dport, pkts),
-      });
-    }
+  // 外網 → 內網（少量正常入站）
+  const publicSrvs = INTERNAL_SERVERS.filter((s) => s.dport === 80 || s.dport === 443);
+  for (let i = 0; i < inboundCount; i++) {
+    const srv = pick(publicSrvs);
+    const pkts = randInt(3, 50);
+    flows.push({
+      src:      pick(EXTERNAL_DSTS_WEIGHTED).ip,
+      dst:      srv.ip,
+      sport:    randInt(1024, 65535),
+      dport:    srv.dport,
+      protocol: srv.proto,
+      packets:  pkts,
+      bytes:    realisticBytes(srv.dport, pkts),
+    });
   }
 
   if (isAttackWindow) {

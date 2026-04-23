@@ -93,17 +93,17 @@ function normalizeIp(v) {
   return '';
 }
 
-// 判斷是否為私有/校園內網 IP
+// 判斷是否為內網 IP（10.87.87.0/24 校園網段 + 標準私有範圍）
 function isPrivateIp(ip) {
   if (!ip) return false;
   const parts = ip.split('.').map(Number);
   if (parts.length !== 4) return false;
-  const [a, b] = parts;
+  const [a, b, c] = parts;
   return (
-    a === 10 ||
+    (a === 10 && b === 87 && c === 87) || // 校園主網段
+    (a === 10) ||
     (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 140 && b === 112) // 台大校園網段
+    (a === 192 && b === 168)
   );
 }
 
