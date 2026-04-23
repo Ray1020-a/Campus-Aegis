@@ -40,8 +40,10 @@ export async function mockGeminiAnalyzer(flowSummary) {
 
   if (!flowSummary.length) return [];
 
+  // 優先找外網來源、高封包量（inbound 攻擊特徵）
+  const isPrivate = (ip) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|140\.112\.)/.test(ip || '');
   const highTraffic = flowSummary
-    .filter((f) => f.packets > 500)
+    .filter((f) => f.packets > 500 && !isPrivate(f.src))
     .map((f) => f.src)
     .filter((ip) => ip && /^\d+\.\d+\.\d+\.\d+$/.test(ip));
 
@@ -57,22 +59,69 @@ export async function mockGeminiAnalyzer(flowSummary) {
 
 // ── Demo NetFlow Generator ──────────────────────────────────────────────────
 
-const NORMAL_SRCS = [
-  '140.112.8.1',   '140.112.8.2',   '140.112.8.3',
-  '192.168.10.5',  '192.168.10.12', '192.168.10.23',
-  '10.87.87.10',   '10.87.87.11',   '10.87.87.20',
-  '172.16.5.100',  '172.16.5.101',
+// 校園內網主機（學生/教職員電腦、IoT 設備等）
+const INTERNAL_SRCS = [
+  // 學生宿舍區 192.168.x
+  '192.168.1.23',  '192.168.1.47',  '192.168.1.88',  '192.168.1.102',
+  '192.168.2.15',  '192.168.2.63',  '192.168.2.134', '192.168.2.201',
+  '192.168.3.9',   '192.168.3.77',
+  // 教室/辦公室 10.x
+  '10.0.1.12',     '10.0.1.34',     '10.0.1.89',     '10.0.2.5',
+  '10.0.2.67',     '10.0.3.100',    '10.0.3.142',    '10.0.4.20',
+  // 校園骨幹 172.16.x
+  '172.16.0.55',   '172.16.0.88',   '172.16.1.10',   '172.16.1.200',
+  // 校園公網 IP 段
+  '140.112.30.5',  '140.112.30.18', '140.112.31.4',  '140.112.31.77',
 ];
+
+// 常見外網目的（按真實流量加權：Google/CDN/社群/串流最多）
+const EXTERNAL_DSTS_WEIGHTED = [
+  // Google 服務（高頻）
+  { ip: '142.250.185.46', dport: 443, proto: 'tcp' },   // google.com
+  { ip: '142.250.196.110', dport: 443, proto: 'tcp' },  // googleapis
+  { ip: '172.217.27.142', dport: 443, proto: 'tcp' },   // google.com
+  { ip: '8.8.8.8',        dport: 53,  proto: 'udp' },   // Google DNS
+  { ip: '8.8.4.4',        dport: 53,  proto: 'udp' },   // Google DNS
+  // Cloudflare / CDN（高頻）
+  { ip: '104.18.23.55',   dport: 443, proto: 'tcp' },
+  { ip: '104.21.14.109',  dport: 443, proto: 'tcp' },
+  { ip: '1.1.1.1',        dport: 53,  proto: 'udp' },   // Cloudflare DNS
+  // YouTube / 串流
+  { ip: '142.250.185.78', dport: 443, proto: 'tcp' },
+  { ip: '74.125.68.91',   dport: 443, proto: 'tcp' },
+  // Meta / Instagram
+  { ip: '157.240.22.174', dport: 443, proto: 'tcp' },
+  { ip: '157.240.3.174',  dport: 443, proto: 'tcp' },
+  // Microsoft / Office 365
+  { ip: '13.107.42.14',   dport: 443, proto: 'tcp' },
+  { ip: '52.112.0.50',    dport: 443, proto: 'tcp' },
+  // GitHub
+  { ip: '140.82.121.4',   dport: 443, proto: 'tcp' },
+  // npm / PyPI CDN
+  { ip: '151.101.1.194',  dport: 443, proto: 'tcp' },
+  { ip: '151.101.65.194', dport: 443, proto: 'tcp' },
+  // LINE（台灣常用）
+  { ip: '125.209.210.119', dport: 443, proto: 'tcp' },
+  // 一般 HTTP（少量）
+  { ip: '93.184.216.34',  dport: 80,  proto: 'tcp' },   // example.com
+  { ip: '54.230.168.50',  dport: 80,  proto: 'tcp' },
+];
+
+// 校內伺服器（對外提供服務，會有外網打進來）
+const INTERNAL_SERVERS = [
+  { ip: '140.112.8.100', dport: 80,   proto: 'tcp' },   // 校網 web
+  { ip: '140.112.8.101', dport: 443,  proto: 'tcp' },   // 校網 web HTTPS
+  { ip: '140.112.8.200', dport: 25,   proto: 'tcp' },   // mail server
+  { ip: '10.87.87.2',    dport: 80,   proto: 'tcp' },   // 內部 web
+  { ip: '10.87.87.3',    dport: 3306, proto: 'tcp' },   // DB（內部）
+  { ip: '10.87.87.4',    dport: 22,   proto: 'tcp' },   // SSH（內部）
+];
+
+// 外網攻擊來源
 const ATTACK_SRCS = [
   '185.220.101.47', '45.155.205.233', '194.165.16.78',
   '103.75.190.12',  '91.108.56.180',  '5.188.206.14',
 ];
-const DSTS = [
-  '10.87.87.2', '10.87.87.3', '10.87.87.4',
-  '140.112.8.100', '140.112.8.101',
-];
-const PROTOCOLS = ['tcp', 'udp', 'icmp'];
-const COMMON_PORTS = [80, 443, 22, 8080, 53, 25, 3306, 5432];
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -81,30 +130,79 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// 模擬 TCP 封包大小（HTTPS 瀏覽 vs DNS vs 大檔案下載）
+function realisticBytes(dport, packets) {
+  if (dport === 53) return randInt(60, 512);                        // DNS：小封包
+  if (dport === 443) return packets * randInt(800, 1500);           // HTTPS：接近 MTU
+  if (dport === 80)  return packets * randInt(400, 1200);
+  return packets * randInt(200, 1000);
+}
+
 function generateFlowBatch(isAttackWindow) {
   const flows = [];
-  for (let i = 0; i < randInt(3, 8); i++) {
-    flows.push({
-      src: pick(NORMAL_SRCS),
-      dst: pick(DSTS),
-      sport: randInt(1024, 65535),
-      dport: pick(COMMON_PORTS),
-      protocol: pick(PROTOCOLS),
-      packets: randInt(1, 50),
-      bytes: randInt(100, 8000),
-    });
-  }
-  if (isAttackWindow) {
-    const attacker = pick(ATTACK_SRCS);
-    for (let i = 0; i < randInt(5, 15); i++) {
+  const batchSize = randInt(8, 18);
+
+  for (let i = 0; i < batchSize; i++) {
+    const roll = Math.random();
+
+    if (roll < 0.78) {
+      // ── 78%：內網 → 外網（outbound）─ 最主要流量 ──────────────────
+      const dst = pick(EXTERNAL_DSTS_WEIGHTED);
+      const pkts = dst.dport === 53 ? randInt(1, 3) : randInt(3, 120);
       flows.push({
-        src: attacker,
-        dst: '10.87.87.2',
-        sport: randInt(1024, 65535),
-        dport: pick([80, 443, 53]),
+        src:      pick(INTERNAL_SRCS),
+        dst:      dst.ip,
+        sport:    randInt(1024, 65535),
+        dport:    dst.dport,
+        protocol: dst.proto,
+        packets:  pkts,
+        bytes:    realisticBytes(dst.dport, pkts),
+      });
+
+    } else if (roll < 0.90) {
+      // ── 12%：內網 → 內網（內部橫向，印表機/NAS/DB 存取）─────────
+      const srv = pick(INTERNAL_SERVERS);
+      const pkts = randInt(2, 40);
+      flows.push({
+        src:      pick(INTERNAL_SRCS),
+        dst:      srv.ip,
+        sport:    randInt(1024, 65535),
+        dport:    srv.dport,
+        protocol: srv.proto,
+        packets:  pkts,
+        bytes:    realisticBytes(srv.dport, pkts),
+      });
+
+    } else {
+      // ── 10%：外網 → 校內公開服務（正常入站，外部瀏覽校網）────────
+      const srv = pick(INTERNAL_SERVERS.filter((s) => s.dport === 80 || s.dport === 443 || s.dport === 25));
+      const pkts = randInt(3, 50);
+      flows.push({
+        src:      pick(EXTERNAL_DSTS_WEIGHTED).ip,
+        dst:      srv.ip,
+        sport:    randInt(1024, 65535),
+        dport:    srv.dport,
+        protocol: srv.proto,
+        packets:  pkts,
+        bytes:    realisticBytes(srv.dport, pkts),
+      });
+    }
+  }
+
+  if (isAttackWindow) {
+    // 攻擊流量：外網 → 內網，高封包量掃描/DDoS 特徵
+    const attacker = pick(ATTACK_SRCS);
+    const target = pick(INTERNAL_SERVERS);
+    for (let i = 0; i < randInt(8, 20); i++) {
+      const pkts = randInt(500, 8000);
+      flows.push({
+        src:      attacker,
+        dst:      target.ip,
+        sport:    randInt(1024, 65535),
+        dport:    pick([80, 443, 22, 3306, 53]),
         protocol: pick(['tcp', 'udp']),
-        packets: randInt(500, 5000),
-        bytes: randInt(50000, 500000),
+        packets:  pkts,
+        bytes:    pkts * randInt(60, 200),
       });
     }
   }

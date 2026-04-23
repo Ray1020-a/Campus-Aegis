@@ -50,6 +50,7 @@ export class FlowAggregator {
       protocol,
       packets,
       bytes,
+      direction: classifyDirection(src, dst),
       at: now,
     });
     if (this.recentFlows.length > RECENT_FLOWS_MAX) this.recentFlows.shift();
@@ -90,6 +91,29 @@ function normalizeIp(v) {
   if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(s)) return s;
   if (s.includes(':')) return s;
   return '';
+}
+
+// 判斷是否為私有/校園內網 IP
+function isPrivateIp(ip) {
+  if (!ip) return false;
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4) return false;
+  const [a, b] = parts;
+  return (
+    a === 10 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 140 && b === 112) // 台大校園網段
+  );
+}
+
+export function classifyDirection(src, dst) {
+  const srcPriv = isPrivateIp(src);
+  const dstPriv = isPrivateIp(dst);
+  if (srcPriv && !dstPriv) return 'outbound';
+  if (!srcPriv && dstPriv) return 'inbound';
+  if (srcPriv && dstPriv) return 'internal';
+  return 'external';
 }
 
 export default FlowAggregator;

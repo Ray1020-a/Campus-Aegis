@@ -363,7 +363,7 @@ function pageLogin(errorMsg = '') {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>光華校務系統 - 登入</title>
+<title>優良校園 - 登入</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"Microsoft JhengHei","PingFang TC",sans-serif;background:linear-gradient(135deg,#1a3a5c 0%,#1a5f9e 60%,#2980b9 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -395,7 +395,7 @@ input[type=text]:focus,input[type=password]:focus{border-color:#1a5f9e}
       <rect x="17" y="22" width="10" height="8" rx="1" fill="#1a5f9e"/>
     </svg>
   </div>
-  <h1>台北市立光華高中</h1>
+  <h1>優良校園</h1>
   <p>教職員及學生校務系統</p>
 </div>
 <div class="card">
@@ -419,7 +419,7 @@ input[type=text]:focus,input[type=password]:focus{border-color:#1a5f9e}
   </form>
   <a href="#" class="forgot">忘記密碼？請洽教務處分機 201</a>
 </div>
-<div class="footer">台北市立光華高中 資訊組 &copy; 2024 | 光華校務系統 v3.2.1</div>
+<div class="footer">優良校園 資訊組 &copy; 2024 | 優良校園 v3.2.1</div>
 <!-- GHSHS-Portal v3.2.1 build:2024-02-20 PHP/7.4.3 -->
 </body>
 </html>`;
@@ -431,7 +431,7 @@ function pagePortal() {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>光華校務系統 - 學務管理</title>
+<title>優良校園 - 學務管理</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"Microsoft JhengHei","PingFang TC",sans-serif;background:#f0f2f5;min-height:100vh;display:flex}
@@ -468,8 +468,8 @@ tr:hover td{background:#f8f9fa}
 <body>
 <aside class="sidebar">
   <div class="sidebar-header">
-    <h2>光華校務系統</h2>
-    <p>台北市立光華高中</p>
+    <h2>優良校園</h2>
+    <p>優良校園</p>
   </div>
   <nav class="sidebar-nav">
     <a href="/portal" class="active">&#127968; 校務總覽</a>
@@ -565,7 +565,7 @@ function pageWpLogin(host, errorMsg = '') {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Log In &lsaquo; 台北市立光華高中官網 &#8212; WordPress</title>
+<title>Log In &lsaquo; 優良校園 &#8212; WordPress</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;background:#f0f0f1;color:#3c434a;font-size:13px}
 #login{width:320px;margin:80px auto}
@@ -585,7 +585,7 @@ p label{display:block;font-weight:600;margin:12px 0 0;color:#3c434a}
 </head>
 <body class="login login-action-login">
 <div id="login">
-<h1><a href="/" title="台北市立光華高中官網" tabindex="-1">W</a></h1>
+<h1><a href="/" title="優良校園" tabindex="-1">W</a></h1>
 ${errorHtml}
 <form name="loginform" id="loginform" action="/wp-login.php" method="post">
   <p>
@@ -608,7 +608,7 @@ ${errorHtml}
   </p>
 </form>
 <p id="nav"><a href="/wp-login.php?action=lostpassword">忘記密碼？</a></p>
-<p id="backtoblog"><a href="/">&larr; 返回 台北市立光華高中官網</a></p>
+<p id="backtoblog"><a href="/">&larr; 返回 優良校園</a></p>
 </div>
 <!-- wp-login 6.4.3 - guanghua.edu.tw -->
 </body>
@@ -724,7 +724,7 @@ app.use((req, res, next) => {
 app.get('/robots.txt', (req, res) => {
   applyFakeHeaders(res, { cache: true });
   res.status(200).type('text/plain').send(
-    `User-agent: *\nDisallow: /admin/\nDisallow: /portal/\nDisallow: /student-data/\nDisallow: /backup/\nDisallow: /.env\nDisallow: /db/\nDisallow: /phpmyadmin/\nDisallow: /teacher/grade-export/\n# 光華校務系統\nSitemap: /sitemap.xml\n`
+    `User-agent: *\nDisallow: /admin/\nDisallow: /portal/\nDisallow: /student-data/\nDisallow: /backup/\nDisallow: /.env\nDisallow: /db/\nDisallow: /phpmyadmin/\nDisallow: /teacher/grade-export/\n# 優良校園\nSitemap: /sitemap.xml\n`
   );
 });
 
