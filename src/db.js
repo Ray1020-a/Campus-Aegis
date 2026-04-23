@@ -34,6 +34,18 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_deception_created ON deception_log(created_at);
+
+  CREATE TABLE IF NOT EXISTS credential_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip          TEXT,
+    user_agent  TEXT,
+    username    TEXT,
+    password    TEXT,
+    path        TEXT,
+    attempt_num INTEGER DEFAULT 1,
+    created_at  TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_credential_ip ON credential_log(ip);
 `);
 
 export function logBlackhole(cidr, reason = '', source = 'gemini') {
@@ -105,7 +117,26 @@ export function logDeceptionHit(method, path, query, ip, userAgent, bodyPreview 
 
 export function listDeceptionLogs(limit = 200) {
   return db.prepare(
-    'SELECT id, method, path, query, ip, user_agent, created_at FROM deception_log ORDER BY id DESC LIMIT ?'
+    'SELECT id, method, path, query, ip, user_agent, body_preview, created_at FROM deception_log ORDER BY id DESC LIMIT ?'
+  ).all(limit);
+}
+
+export function logCredential(ip, userAgent, username, password, path, attemptNum = 1) {
+  db.prepare(
+    'INSERT INTO credential_log (ip, user_agent, username, password, path, attempt_num) VALUES (?,?,?,?,?,?)'
+  ).run(
+    ip ?? '',
+    (userAgent ?? '').slice(0, 512),
+    (username ?? '').slice(0, 256),
+    (password ?? '').slice(0, 256),
+    (path ?? '').slice(0, 512),
+    attemptNum
+  );
+}
+
+export function listCredentials(limit = 200) {
+  return db.prepare(
+    'SELECT id, ip, user_agent, username, password, path, attempt_num, created_at FROM credential_log ORDER BY id DESC LIMIT ?'
   ).all(limit);
 }
 
@@ -130,4 +161,5 @@ export function getTopDeceptionIps(limit = 15) {
 export function clearAllData() {
   db.prepare('DELETE FROM blackhole_log').run();
   db.prepare('DELETE FROM deception_log').run();
+  db.prepare('DELETE FROM credential_log').run();
 }

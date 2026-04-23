@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run lint)",
+      "Bash(curl -s http://127.0.0.1:3099/*)",
+      "Bash(node --check *)",
+      "Bash(sqlite3 data/defense.db *)"
+    ]
+  }
+}
