@@ -5,7 +5,7 @@ import geoip from 'geoip-lite';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { addBlackhole, deleteBlackhole, getStaticRoutes } from './vyos-client.js';
+import * as vyosClientModule from './vyos-client.js';
 import * as db from './db.js';
 import { config } from './config.js';
 import { deceptionApp } from './deception-server.js';
@@ -45,7 +45,10 @@ function recordLoginSuccess(ip) {
   loginAttempts.delete(ip);
 }
 
-export function createApp(aggregator = null) {
+export function createApp(aggregator = null, vyosOverrides = {}) {
+  const addBlackhole = vyosOverrides.addBlackhole ?? vyosClientModule.addBlackhole;
+  const deleteBlackhole = vyosOverrides.deleteBlackhole ?? vyosClientModule.deleteBlackhole;
+  const getStaticRoutes = vyosOverrides.getStaticRoutes ?? vyosClientModule.getStaticRoutes;
   const app = express();
 
   app.use((req, res, next) => {
@@ -82,12 +85,16 @@ export function createApp(aggregator = null) {
         dbOk = true;
       } catch (_) {}
       let vyosOk = false;
-      try {
-        await Promise.race([
-          getStaticRoutes().then(() => { vyosOk = true; }),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000)),
-        ]);
-      } catch (_) {}
+      if (config.demo.enabled) {
+        vyosOk = true;
+      } else {
+        try {
+          await Promise.race([
+            getStaticRoutes().then(() => { vyosOk = true; }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000)),
+          ]);
+        } catch (_) {}
+      }
       const status = dbOk ? (vyosOk ? 'ok' : 'degraded') : 'error';
       res.json({
         success: true,
@@ -290,7 +297,18 @@ const { port: decPort, bindHost: decBind } = config.deception;
 
 const isStandalone = process.argv[1] && process.argv[1].includes('admin-server');
 if (isStandalone) {
-  const app = createApp(null);
+  let vyosOverrides = {};
+  if (config.demo.enabled) {
+    const demo = await import('./demo-mode.js');
+    demo.seedDemoDatabase();
+    vyosOverrides = {
+      addBlackhole: demo.mockVyosClient.addBlackhole,
+      deleteBlackhole: demo.mockVyosClient.deleteBlackhole,
+      getStaticRoutes: demo.mockVyosClient.getStaticRoutes,
+    };
+    console.log('[DEMO] 管理面板以離線示範模式啟動');
+  }
+  const app = createApp(null, vyosOverrides);
   app.listen(port, bindHost, () => {
     console.log(`管理員面板 http://${bindHost}:${port}`);
   });

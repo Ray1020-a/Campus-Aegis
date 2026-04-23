@@ -20,6 +20,10 @@ const dbPathRaw = process.env.DB_PATH || 'data/defense.db';
 const dbPathResolved = dbPathRaw.startsWith('/') ? dbPathRaw : resolve(process.cwd(), dbPathRaw);
 
 export const config = {
+  demo: {
+    enabled: process.env.DEMO_MODE === '1',
+  },
+
   vyos: {
     baseUrl: process.env.VYOS_URL || 'https://192.168.1.1',
     apiKey: process.env.VYOS_API_KEY || '',
@@ -61,6 +65,7 @@ export const config = {
 };
 
 export function validateConfig(options = {}) {
+  if (process.env.DEMO_MODE === '1') return;
   const errors = [];
   if (!config.vyos.baseUrl || config.vyos.baseUrl === 'https://192.168.1.1') {
     errors.push('請在 .env 設定 VYOS_URL（VyOS 的 HTTPS 位址）');

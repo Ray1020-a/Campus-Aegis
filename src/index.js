@@ -2,10 +2,6 @@ import { config, validateConfig } from './config.js';
 import { logger } from './logger.js';
 import { state, setLastDefense } from './state.js';
 import { FlowAggregator } from './flow-aggregator.js';
-import { startNetFlowCollector } from './netflow-collector.js';
-import { startPcapCollector } from './pcap-collector.js';
-import { analyzeWithGemini } from './gemini-analyzer.js';
-import { addBlackhole } from './vyos-client.js';
 import * as db from './db.js';
 import { createApp } from './admin-server.js';
 import { deceptionApp } from './deception-server.js';
@@ -17,6 +13,30 @@ let netflowHandle = null;
 let pcapHandle = null;
 let adminServer = null;
 let deceptionServer = null;
+
+// 依照 DEMO_MODE 决定使用 mock 或真实模块
+let analyzeWithGemini;
+let addBlackhole;
+let deleteBlackhole;
+let getStaticRoutes;
+
+if (config.demo.enabled) {
+  const demo = await import('./demo-mode.js');
+  analyzeWithGemini = demo.mockGeminiAnalyzer;
+  addBlackhole = demo.mockVyosClient.addBlackhole;
+  deleteBlackhole = demo.mockVyosClient.deleteBlackhole;
+  getStaticRoutes = demo.mockVyosClient.getStaticRoutes;
+  demo.seedDemoDatabase();
+  netflowHandle = demo.startDemoNetFlow(aggregator);
+  logger.info('[DEMO] 離線示範模式已啟動，所有外部依賴使用 mock');
+} else {
+  const geminiMod = await import('./gemini-analyzer.js');
+  const vyosMod = await import('./vyos-client.js');
+  analyzeWithGemini = geminiMod.analyzeWithGemini;
+  addBlackhole = vyosMod.addBlackhole;
+  deleteBlackhole = vyosMod.deleteBlackhole;
+  getStaticRoutes = vyosMod.getStaticRoutes;
+}
 
 async function runDefenseCycle() {
   const summary = aggregator.getSummaryAndMaybeClear(true);
@@ -95,20 +115,28 @@ async function main() {
     process.exit(1);
   }
 
-  logger.info('Campus Aegis 校園神盾 啟動');
+  if (config.demo.enabled) {
+    logger.info('Campus Aegis 校園神盾 [DEMO 模式] 啟動');
+  } else {
+    logger.info('Campus Aegis 校園神盾 啟動');
+  }
   logger.info('防禦週期: %d 秒', config.gemini.intervalSeconds);
 
-  if (config.netflow.enabled) {
-    try {
-      netflowHandle = await startNetFlowCollector(aggregator);
-    } catch (e) {
-      logger.error('[NetFlow] 啟動失敗: %s', e.message);
+  if (!config.demo.enabled) {
+    if (config.netflow.enabled) {
+      try {
+        const { startNetFlowCollector } = await import('./netflow-collector.js');
+        netflowHandle = await startNetFlowCollector(aggregator);
+      } catch (e) {
+        logger.error('[NetFlow] 啟動失敗: %s', e.message);
+      }
     }
+
+    const { startPcapCollector } = await import('./pcap-collector.js');
+    pcapHandle = await startPcapCollector(aggregator);
   }
 
-  pcapHandle = await startPcapCollector(aggregator);
-
-  const adminApp = createApp(aggregator);
+  const adminApp = createApp(aggregator, { getStaticRoutes, deleteBlackhole });
   adminServer = adminApp.listen(config.admin.port, config.admin.bindHost, () => {
     logger.info('[admin] 管理員面板 http://%s:%d', config.admin.bindHost, config.admin.port);
   });

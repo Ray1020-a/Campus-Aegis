@@ -9,7 +9,8 @@
     "admin": "node src/admin-server.js",
     "deception": "node src/deception-server.js",
     "start:full": "node src/index.js",
-    "all": "node src/index.js"
+    "all": "node src/index.js",
+    "demo": "node --env-file=.env.demo src/index.js"
   },
   "keywords": ["vyos", "netflow", "ddos", "gemini", "blackhole"],
   "license": "MIT",
